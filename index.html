@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Archive X">
+  <link rel="apple-touch-icon" href="images/app-icon.png">
+  
+  <title>x</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950">
+
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    const Starfield = ({ starCount = 60 }) => {
+      const canvasRef = useRef(null);
+
+      useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        let animationFrameId;
+
+        const resizeCanvas = () => {
+          canvas.width = window.innerWidth;
+          canvas.height = window.innerHeight;
+        };
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        const stars = Array.from({ length: starCount }, () => ({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          radius: Math.random() * 1.5 + 0.5,
+          alpha: Math.random(),
+          speed: Math.random() * 0.02 + 0.005,
+          direction: Math.random() > 0.5 ? 1 : -1
+        }));
+
+        const draw = () => {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          
+          stars.forEach((star) => {
+            star.alpha += star.speed * star.direction;
+            if (star.alpha <= 0.1 || star.alpha >= 1) {
+              star.direction *= -1;
+            }
+            ctx.beginPath();
+            ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(167, 243, 208, ${star.alpha * 0.8})`;
+            ctx.fill();
+          });
+
+          animationFrameId = requestAnimationFrame(draw);
+        };
+
+        draw();
+
+        return () => {
+          cancelAnimationFrame(animationFrameId);
+          window.removeEventListener('resize', resizeCanvas);
+        };
+      }, [starCount]);
+
+      return (
+        <canvas
+          ref={canvasRef}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            zIndex: -1,
+            pointerEvents: 'none',
+            background: 'radial-gradient(circle at 30% 20%, rgba(29, 78, 216, 0.15) 0%, rgba(15, 23, 42, 1) 50%), radial-gradient(circle at 80% 80%, rgba(5, 150, 105, 0.12) 0%, rgba(15, 23, 42, 1) 100%)'
+          }}
+        />
+      );
+    };
+
+    const ArtworkThumbnail = ({ src, alt, sizeClass = "w-16 h-16" }) => {
+      if (src && src.trim() !== "") {
+        return (
+          <img 
+            src={src} 
+            alt={alt} 
+            className={`${sizeClass} rounded-lg object-cover border border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.2)] flex-shrink-0`}
+          />
+        );
+      }
+      return (
+        <div className={`${sizeClass} rounded-lg bg-gradient-to-br from-slate-800 to-slate-950 border border-sky-500/20 flex flex-col items-center justify-center text-[10px] text-sky-400 font-mono tracking-tighter flex-shrink-0`}>
+          <span>🎵</span>
+          <span className="text-[8px] mt-1">COSMIC</span>
+        </div>
+      );
+    };
+
+    function PlaylistApp() {
+      const [songs, setSongs] = useState([]);
+      const [activeTab, setActiveTab] = useState('roulette');
+      
+      const [currentRoulette, setCurrentRoulette] = useState(null);
+      const [rouletteLine, setRouletteLine] = useState("");
+      const [showFullLyrics, setShowFullLyrics] = useState(false);
+      const [selectedPOV, setSelectedPOV] = useState(null);
+      const [searchQuery, setSearchQuery] = useState("");
+
+      const [triviaQuestion, setTriviaQuestion] = useState(null);
+      const [selectedAnswer, setSelectedAnswer] = useState(null);
+      const [isAnswerCorrect, setIsAnswerCorrect] = useState(null);
+
+      const [playingUrl, setPlayingUrl] = useState(null);
+      const [isPlaying, setIsPlaying] = useState(false);
+      const audioRef = useRef(new Audio());
+
+      useEffect(() => {
+        fetch('./songs.json')
+          .then(response => response.json())
+          .then(data => {
+            setSongs(data);
+            if (data.length > 0) {
+              selectRouletteSong(data);
+              setSelectedPOV(data[0]);
+            }
+          })
+          .catch(err => console.error(err));
+      }, []);
+
+      useEffect(() => {
+        const audio = audioRef.current;
+        const handleEnded = () => setIsPlaying(false);
+        audio.addEventListener('ended', handleEnded);
+
+        if (playingUrl) {
+          audio.src = playingUrl;
+          audio.play()
+            .then(() => setIsPlaying(true))
+            .catch(err => console.log(err));
+        } else {
+          audio.pause();
+          setIsPlaying(false);
+        }
+
+        return () => {
+          audio.removeEventListener('ended', handleEnded);
+        };
+      }, [playingUrl]);
+
+      const toggleAudioPlayback = (url) => {
+        if (!url) return;
+        if (playingUrl === url) {
+          if (isPlaying) {
+            audioRef.current.pause();
+            setIsPlaying(false);
+          } else {
+            audioRef.current.play().then(() => setIsPlaying(true));
+          }
+        } else {
+          setPlayingUrl(url);
+        }
+      };
+
+      const selectRouletteSong = (songList) => {
+        if (songList.length === 0) return;
+        const randomIndex = Math.floor(Math.random() * songList.length);
+        const chosen = songList[randomIndex];
+        setCurrentRoulette(chosen);
+
+        const lines = chosen.lyrics.split('\n').map(l => l.trim()).filter(l => l.length > 0 && !l.startsWith('['));
+        if (lines.length > 0) {
+          setRouletteLine(lines[Math.floor(Math.random() * lines.length)]);
+        } else {
+          setRouletteLine("Looking at the stars together...");
+        }
+        setShowFullLyrics(false);
+        setPlayingUrl(null);
+      };
+
+      const triggerRoulette = () => {
+        selectRouletteSong(songs);
+      };
+
+      const generateTrivia = () => {
+        if (songs.length < 2) return;
+        const correctSong = songs[Math.floor(Math.random() * songs.length)];
+        const shuffledPool = songs.filter(s => s.id !== correctSong.id);
+        
+        const incorrectOptions = [];
+        while (incorrectOptions.length < 3 && shuffledPool.length > 0) {
+          const idx = Math.floor(Math.random() * shuffledPool.length);
+          incorrectOptions.push(shuffledPool.splice(idx, 1)[0]);
+        }
+
+        const choices = [correctSong, ...incorrectOptions]
+          .sort(() => Math.random() - 0.5)
+          .map(s => s.sender);
+
+        const uniqueChoices = [...new Set(choices)];
+
+        const lines = correctSong.lyrics.split('\n').map(l => l.trim()).filter(l => l.length > 0 && !l.startsWith('['));
+        const quoteSnippet = lines.length > 0 ? lines[Math.floor(Math.random() * lines.length)] : "A lyric from our shared history...";
+
+        setTriviaQuestion({
+          quote: quoteSnippet,
+          correctSender: correctSong.sender,
+          choices: uniqueChoices.length < 2 ? ['🦦', '🧩'] : uniqueChoices
+        });
+        setSelectedAnswer(null);
+        setIsAnswerCorrect(null);
+        setPlayingUrl(null);
+      };
+
+      useEffect(() => {
+        if (activeTab === 'trivia' && songs.length > 0) {
+          generateTrivia();
+        } else {
+          setPlayingUrl(null);
+        }
+      }, [activeTab, songs]);
+
+      const handleAnswerSubmit = (choice) => {
+        setSelectedAnswer(choice);
+        setIsAnswerCorrect(choice === triviaQuestion.correctSender);
+      };
+
+      const filterSongs = (senderName) => {
+        return songs.filter(s => {
+          const matchesSender = s.sender === senderName;
+          const matchesSearch = s.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                s.artist.toLowerCase().includes(searchQuery.toLowerCase());
+          return matchesSender && matchesSearch;
+        });
+      };
+
+      return (
+        <div className="relative min-h-screen text-slate-100 font-sans overflow-x-hidden p-6 md:p-12">
+          <Starfield starCount={60} />
+
+          <div className="max-w-5xl mx-auto backdrop-blur-md bg-slate-900/60 rounded-2xl border border-emerald-500/20 shadow-[0_0_30px_rgba(5,150,105,0.15)] p-6 md:p-8">
+            
+            <header className="mb-8 border-b border-sky-500/25 pb-6 text-center">
+              <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-emerald-300 via-teal-200 to-sky-300 bg-clip-text text-transparent">
+                x
+              </h1>
+              <p className="text-slate-400 mt-2 text-sm md:text-base">
+                an archive.
+              </p>
+            </header>
+
+            <nav className="flex flex-wrap justify-center gap-2 mb-8">
+              {[
+                { id: 'roulette', label: '🌌 roulette' },
+                { id: 'trivia', label: '💿 association' },
+                { id: 'pov', label: '🔄 vault' }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                    activeTab === tab.id
+                      ? 'bg-emerald-500/20 border border-emerald-400 text-slate-400 shadow-[0_0_15px_rgba(5,150,105,0.3)]'
+                      : 'bg-slate-800/40 border border-slate-700/50 text-slate-400 hover:bg-slate-700/40 hover:border-sky-500/30'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
+
+            <main className="min-h-[400px]">
+              {activeTab === 'roulette' && currentRoulette && (
+                <div className="space-y-6">
+                  <div className="backdrop-blur-sm bg-slate-950/40 p-8 rounded-xl border border-sky-500/10 text-center relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-sky-400 to-emerald-400"></div>
+                    <p className="text-xl md:text-2xl font-serif italic text-teal-100 max-w-2xl mx-auto leading-relaxed">
+                      "{rouletteLine}"
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col items-center gap-4">
+                    <button
+                      onClick={triggerRoulette}
+                      className="px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-bold rounded-lg transition-all duration-300 shadow-[0_0_15px_rgba(16,185,129,0.4)]"
+                    >
+                      spin another line
+                    </button>
+
+                    <button
+                      onClick={() => setShowFullLyrics(!showFullLyrics)}
+                      className="text-sm text-slate-400 hover:text-slate-300 transition"
+                    >
+                      {showFullLyrics ? 'Hide Details' : 'Reveal Context & Audio'}
+                    </button>
+                  </div>
+
+                  {showFullLyrics && (
+                    <div className="mt-6 p-6 rounded-lg bg-slate-950/60 border border-slate-800 animate-fadeIn">
+                      <div className="flex justify-between items-center border-b border-slate-800 pb-4 mb-4 gap-4">
+                        <div className="flex items-center gap-4">
+                          <ArtworkThumbnail src={currentRoulette.albumArt} alt={currentRoulette.title} />
+                          <div>
+                            <h3 className="text-lg font-bold text-emerald-300">{currentRoulette.title}</h3>
+                            <p className="text-slate-400 text-sm">{currentRoulette.artist}</p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-3">
+                          {currentRoulette.previewUrl && (
+                            <button 
+                              onClick={() => toggleAudioPlayback(currentRoulette.previewUrl)}
+                              className="px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2 hover:bg-emerald-500/20 transition"
+                            >
+                              {playingUrl === currentRoulette.previewUrl && isPlaying ? '⏸ Pause' : '▶ Play'}
+                            </button>
+                          )}
+                          <span className="px-2.5 py-1 rounded-full bg-sky-500/10 border border-sky-500/30 text-sky-300 text-xs">
+                            Sent by {currentRoulette.sender}
+                          </span>
+                        </div>
+                      </div>
+                      <pre className="whitespace-pre-wrap font-sans text-sm text-slate-300 leading-relaxed max-h-60 overflow-y-auto">
+                        {currentRoulette.lyrics}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'pov' && (
+                <div className="space-y-6">
+                  
+                  {/* EXPANDED PREVIEW MODULE COMPONENT */}
+                  {selectedPOV && (
+                    <div className="p-6 md:p-8 rounded-xl border border-teal-500/20 bg-slate-950/40 animate-fadeIn relative flex flex-col md:flex-row gap-8 items-stretch min-h-[360px]">
+                      
+                      {/* FLOATING ACTION PREVIEW BUTTON */}
+                      {selectedPOV.previewUrl && (
+                        <button 
+                          onClick={() => toggleAudioPlayback(selectedPOV.previewUrl)}
+                          className="absolute top-6 right-6 px-3 py-1.5 rounded-full bg-teal-500/10 border border-teal-500/30 text-teal-300 text-xs font-semibold hover:bg-teal-500/20 transition tracking-wide z-10"
+                        >
+                          {playingUrl === selectedPOV.previewUrl && isPlaying ? '⏸ Pause Preview' : '▶ Play Preview'}
+                        </button>
+                      )}
+
+                      {/* SIDEBAR BLOCK: ALIGNED VERTICALLY CENTERED WITH LARGER ART */}
+                      <div className="flex flex-col items-center justify-center text-center min-w-[220px] flex-shrink-0 pr-2">
+                        <ArtworkThumbnail src={selectedPOV.albumArt} alt={selectedPOV.title} sizeClass="w-24 h-24 md:w-28 md:h-28" />
+                        
+                        <div className="mt-4 space-y-1 w-full">
+                          <h4 className="text-lg font-bold text-teal-300 leading-tight break-words">{selectedPOV.title}</h4>
+                          <p className="text-sm text-slate-400 break-words">{selectedPOV.artist}</p>
+                          <div className="pt-2">
+                            <span className="inline-block px-2.5 py-1 rounded bg-slate-900/60 text-slate-400 text-[10px] border border-slate-800 tracking-wide">
+                              Vault Tracker: {selectedPOV.sender}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* RIGHT BLOCK: SHIFTED SLIGHTLY LEFT TO CLOSE GAP REGIONS */}
+                      <div className="flex-1 flex flex-col justify-center md:-ml-2">
+                        <div className="p-6 rounded-xl bg-slate-950/50 border border-slate-800/60 text-left min-h-[260px] flex flex-col justify-center">
+                          <pre className="whitespace-pre-wrap font-sans text-base text-slate-400/90 leading-relaxed overflow-y-auto max-h-[260px] w-full pr-2">
+                            {selectedPOV.lyrics}
+                          </pre>
+                        </div>
+                      </div>
+
+                    </div>
+                  )}
+
+                  {/* STRETCHED UPPER MIDSECTION INPUT SEARCH FIELD */}
+                  <div className="flex justify-center pt-4 pb-2">
+                    <div className="w-full max-w-2xl">
+                      <input 
+                        type="text"
+                        placeholder="search vault titles / artists..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full bg-slate-900/40 border border-slate-800 focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/20 rounded-xl px-6 py-3 text-sm text-slate-300 placeholder-slate-600 outline-none transition text-center shadow-md"
+                      />
+                    </div>
+                  </div>
+
+                  {/* LOWER COLUMNS SENDER GRID TRACKS */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="p-6 rounded-xl border border-emerald-500/10 bg-slate-950/30 max-h-[400px] overflow-y-auto">
+                      <h3 className="text-lg font-semibold text-emerald-300 mb-4 flex items-center gap-2 justify-center">
+                        <span>🦦</span> 
+                      </h3>
+                      <div className="space-y-3">
+                        {filterSongs('🦦').map(song => (
+                          <div
+                            key={`otter-${song.id}`}
+                            onClick={() => { setSelectedPOV(song); if(song.previewUrl) setPlayingUrl(song.previewUrl); }}
+                            className={`p-3 rounded-lg border cursor-pointer transition-all text-center flex items-center gap-3 justify-start px-4 ${
+                              selectedPOV?.id === song.id
+                                ? 'bg-emerald-500/10 border-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.15)]'
+                                : 'bg-slate-900/40 border-slate-800 hover:border-slate-700'
+                            }`}
+                          >
+                            <ArtworkThumbnail src={song.albumArt} alt={song.title} />
+                            <div className="text-left">
+                              <p className="text-sm font-semibold">{song.title}</p>
+                              <p className="text-xs text-slate-500">{song.artist}</p>
+                            </div>
+                          </div>
+                        ))}
+                        {filterSongs('🦦').length === 0 && (
+                          <p className="text-xs text-slate-500 text-center py-4">No matching tracks in this vault column.</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="p-6 rounded-xl border border-sky-500/10 bg-slate-950/30 max-h-[400px] overflow-y-auto">
+                      <h3 className="text-lg font-semibold text-sky-300 mb-4 flex items-center gap-2 justify-center">
+                        <span>🧩</span> 
+                      </h3>
+                      <div className="space-y-3">
+                        {filterSongs('🧩').map(song => (
+                          <div
+                            key={`puzzle-${song.id}`}
+                            onClick={() => { setSelectedPOV(song); if(song.previewUrl) setPlayingUrl(song.previewUrl); }}
+                            className={`p-3 rounded-lg border cursor-pointer transition-all text-center flex items-center gap-3 justify-start px-4 ${
+                              selectedPOV?.id === song.id
+                                ? 'bg-sky-500/10 border-sky-400 shadow-[0_0_10px_rgba(56,189,248,0.15)]'
+                                : 'bg-slate-900/40 border-slate-800 hover:border-slate-700'
+                            }`}
+                          >
+                            <ArtworkThumbnail src={song.albumArt} alt={song.title} />
+                            <div className="text-left">
+                              <p className="text-sm font-semibold">{song.title}</p>
+                              <p className="text-xs text-slate-500">{song.artist}</p>
+                            </div>
+                          </div>
+                        ))}
+                        {filterSongs('🧩').length === 0 && (
+                          <p className="text-xs text-slate-500 text-center py-4">No matching tracks in this vault column.</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              )}
+
+              {activeTab === 'trivia' && triviaQuestion && (
+                <div className="max-w-2xl mx-auto space-y-8 text-center flex flex-col items-center animate-fadeIn">
+                  <h3 className="text-xl md:text-2xl font-bold text-emerald-300 tracking-wide">who sent this lyric?</h3>
+                  
+                  {/* EXPANDED QUOTE SNIPPET BLOCK CONTAINER */}
+                  <div className="w-full p-8 md:p-12 rounded-xl bg-slate-950/40 border border-slate-800/80 shadow-md">
+                    <p className="text-lg md:text-2xl italic font-serif text-slate-200 leading-relaxed">
+                      "{triviaQuestion.quote}"
+                    </p>
+                  </div>
+
+                  {/* EXPANDED SELECTION BUTTONS GRID */}
+                  <div className="flex flex-col gap-4 w-full">
+                    {triviaQuestion.choices.map((choice, i) => (
+                      <button
+                        key={i}
+                        onClick={() => handleAnswerSubmit(choice)}
+                        disabled={selectedAnswer !== null}
+                        className={`w-full py-5 px-6 rounded-xl font-semibold border transition-all text-lg flex items-center justify-center gap-3 ${
+                          selectedAnswer === choice
+                            ? choice === triviaQuestion.correctSender
+                              ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.3)]'
+                              : 'bg-red-500/20 border-red-400 text-red-300 shadow-[0_0_15px_rgba(239,68,68,0.3)]'
+                            : selectedAnswer !== null && choice === triviaQuestion.correctSender
+                            ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400'
+                            : 'bg-slate-900/40 border-slate-800 hover:border-slate-700 text-slate-300'
+                        }`}
+                      >
+                        {choice}
+                      </button>
+                    ))}
+                  </div>
+
+                  {selectedAnswer !== null && (
+                    <div className="mt-4 animate-fadeIn">
+                      {isAnswerCorrect ? (
+                        <p className="text-emerald-400 font-bold text-base">✨ Correct! Your memory shines as bright as the stars.</p>
+                      ) : (
+                        <p className="text-red-400 text-base">Ah, not quite! Try another one to test your recall.</p>
+                      )}
+                      <button
+                        onClick={generateTrivia}
+                        className="mt-6 px-6 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-sm text-sky-300 font-semibold transition"
+                      >
+                        Next Question
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </main>
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<PlaylistApp />);
+  </script>
+</body>
+</html>
