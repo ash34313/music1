@@ -126,7 +126,16 @@
       const audioRef = useRef(new Audio());
       
       const lyricViewportRef = useRef(null);
+      const songViewportRef = useRef(null);
       const songCardsRef = useRef({});
+
+      const highlightedTriviaLineRef = useRef(null);
+
+      const honorableMentionsList = [
+        "sorrows", "always forever", "bout mine", "woman",
+        "chronicles", "inhale", "that’s my", "act xi: she ain’t no angel",
+        "trust", "blind", "far", "here we go", "pricetag / beverlywood", "let this go"
+      ];
 
       useEffect(() => {
         fetch('./songs.json')
@@ -162,10 +171,21 @@
       }, [playingUrl]);
 
       useEffect(() => {
-        if (lyricViewportRef.current) {
-          lyricViewportRef.current.scrollTop = 0;
+        if (selectedPOV) {
+          if (lyricViewportRef.current) {
+            lyricViewportRef.current.scrollTop = 0;
+          }
+          if (songViewportRef.current) {
+            songViewportRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
         }
       }, [selectedPOV]);
+
+      useEffect(() => {
+        if (selectedAnswer !== null && highlightedTriviaLineRef.current) {
+          highlightedTriviaLineRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, [selectedAnswer]);
 
       const toggleAudioPlayback = (url) => {
         if (!url) return;
@@ -224,7 +244,8 @@
         setTriviaQuestion({
           quote: quoteSnippet,
           correctSender: correctSong.sender,
-          choices: uniqueChoices.length < 2 ? ['🦦', '💿'] : uniqueChoices
+          song: correctSong,
+          choices: uniqueChoices.length < 2 ? ['🦦', '🧩'] : uniqueChoices
         });
         setSelectedAnswer(null);
         setIsAnswerCorrect(null);
@@ -286,7 +307,7 @@
             <nav className="flex flex-wrap justify-center gap-2 mb-8">
               {[
                 { id: 'roulette', label: '🌌 roulette' },
-                { id: 'trivia', label: '💿 association' },
+                /* { id: 'trivia', label: '💿 association' }, */
                 { id: 'pov', label: '🔄 vault' }
               ].map((tab) => (
                 <button
@@ -366,7 +387,7 @@
                 <div className="space-y-6">
                   
                   {selectedPOV && (
-                    <div className="p-6 md:p-8 rounded-xl border border-teal-500/20 bg-slate-950/40 animate-fadeIn relative flex flex-col md:flex-row gap-8 items-stretch min-h-[360px]">
+                    <div ref={songViewportRef} className="p-6 md:p-8 rounded-xl border border-teal-500/20 bg-slate-950/40 animate-fadeIn relative flex flex-col md:flex-row gap-8 items-stretch min-h-[360px]">
                       
                       {selectedPOV.previewUrl && (
                         <button 
@@ -449,7 +470,7 @@
 
                     <div className="p-6 rounded-xl border border-sky-500/10 bg-slate-950/30 max-h-[400px] overflow-y-auto">
                       <h3 className="text-lg font-semibold text-sky-300 mb-4 flex items-center gap-2 justify-center">
-                        <span>💿</span> 
+                        <span>🧩</span> 
                       </h3>
                       <div className="space-y-3">
                         {filterSongs('🧩').map(song => (
@@ -509,6 +530,8 @@
                 </div>
               )}
 
+              {/* ASSOCIATION FEATURE (TEMPORARILY COMMENTED OUT - DO NOT REMOVE) */}
+              {/*
               {activeTab === 'trivia' && triviaQuestion && (
                 <div className="max-w-2xl mx-auto space-y-8 text-center flex flex-col items-center animate-fadeIn">
                   <h3 className="text-xl md:text-2xl font-bold text-emerald-300 tracking-wide">who sent this lyric?</h3>
@@ -541,15 +564,48 @@
                   </div>
 
                   {selectedAnswer !== null && (
-                    <div className="mt-4 animate-fadeIn">
+                    <div className="w-full mt-4 space-y-6 animate-fadeIn">
                       {isAnswerCorrect ? (
                         <p className="text-emerald-400 font-bold text-base">✨ Correct! Your memory shines as bright as the stars.</p>
                       ) : (
                         <p className="text-red-400 text-base">Ah, not quite! Try another one to test your recall.</p>
                       )}
+
+                      {triviaQuestion.song && (
+                        <div className="p-6 rounded-xl bg-slate-950/60 border border-slate-800 text-left space-y-4">
+                          <div className="flex items-center gap-4 border-b border-slate-800 pb-4">
+                            <ArtworkThumbnail src={triviaQuestion.song.albumArt} alt={triviaQuestion.song.title} />
+                            <div>
+                              <h4 className="text-lg font-bold text-emerald-300">{triviaQuestion.song.title}</h4>
+                              <p className="text-sm text-slate-400">{triviaQuestion.song.artist}</p>
+                              <p className="text-xs text-slate-500 mt-1">Sent by {triviaQuestion.song.sender}</p>
+                            </div>
+                          </div>
+
+                          <div className="max-h-60 overflow-y-auto p-4 rounded-lg bg-slate-950/50 border border-slate-800/80">
+                            {triviaQuestion.song.lyrics.split('\n').map((line, idx) => {
+                              const isTargetLine = line.trim() === triviaQuestion.quote.trim();
+                              return (
+                                <div
+                                  key={idx}
+                                  ref={isTargetLine ? highlightedTriviaLineRef : null}
+                                  className={`py-0.5 text-sm ${
+                                    isTargetLine
+                                      ? 'bg-emerald-500/20 text-emerald-300 font-bold px-2 rounded border-l-2 border-emerald-400'
+                                      : 'text-slate-400'
+                                  }`}
+                                >
+                                  {line || '\u00A0'}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
                       <button
                         onClick={generateTrivia}
-                        className="mt-6 px-6 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-sm text-sky-300 font-semibold transition"
+                        className="px-6 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-sm text-sky-300 font-semibold transition"
                       >
                         Next Question
                       </button>
@@ -557,6 +613,7 @@
                   )}
                 </div>
               )}
+              */}
             </main>
           </div>
 
