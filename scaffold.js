@@ -22,12 +22,13 @@ console.log('Successfully updated songs.json structure with audio preview and al
 /* COPY FOR SONGS 
 
 {
-    "id": 15,
+    "id": 17,
     "title": "",
     "artist": "",
-    "sender": "🦦",
+    "sender": "🧩",
     "lyrics": "",
-    "albumArt": "img/"
+    "albumArt": "img/",
+    "honorableMention": true
   }
     
 */
