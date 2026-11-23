@@ -28,7 +28,8 @@ console.log('Successfully updated songs.json structure with audio preview and al
     "sender": "🧩",
     "lyrics": "",
     "albumArt": "img/",
-    "honorableMention": true
+    "honorableMention": true,
+    "note": ""
   }
     
 */
