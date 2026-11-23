@@ -28,6 +28,7 @@ console.log('Successfully updated songs.json structure.');
     "lyrics": "",
     "albumArt": "img/",
     "honorableMention": true,
+    "dateSent": "2025-10-14",
     "note": ""
   }
     
