@@ -22,6 +22,28 @@
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
+    const formatDateSent = (dateStr) => {
+      if (!dateStr || typeof dateStr !== 'string') return null;
+      const trimmed = dateStr.trim();
+      if (!trimmed) return null;
+
+      const fullMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (fullMatch) {
+        const [, year, month, day] = fullMatch;
+        const date = new Date(Number(year), Number(month) - 1, Number(day));
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      }
+
+      const monthMatch = trimmed.match(/^(\d{4})-(\d{2})$/);
+      if (monthMatch) {
+        const [, year, month] = monthMatch;
+        const date = new Date(Number(year), Number(month) - 1, 1);
+        return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      }
+
+      return trimmed;
+    };
+
     const Starfield = ({ starCount = 60 }) => {
       const canvasRef = useRef(null);
 
@@ -296,6 +318,9 @@
         }
       };
 
+      const formattedRouletteDate = currentRoulette ? formatDateSent(currentRoulette.dateSent) : null;
+      const formattedPOVDate = selectedPOV ? formatDateSent(selectedPOV.dateSent) : null;
+
       return (
         <div className="relative min-h-screen text-slate-100 font-sans overflow-x-hidden p-6 md:p-12">
           <Starfield starCount={60} />
@@ -359,7 +384,7 @@
 
                   {showFullLyrics && (
                     <div className="mt-6 p-6 rounded-lg bg-slate-950/60 border border-slate-800 animate-fadeIn">
-                      <div className="flex justify-between items-center border-b border-slate-800 pb-4 mb-4 gap-4">
+                      <div className="flex flex-wrap justify-between items-center border-b border-slate-800 pb-4 mb-4 gap-4">
                         <div className="flex items-center gap-4">
                           <ArtworkThumbnail src={currentRoulette.albumArt} alt={currentRoulette.title} />
                           <div>
@@ -368,7 +393,7 @@
                           </div>
                         </div>
                         
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-2.5">
                           {currentRoulette.previewUrl && (
                             <button 
                               onClick={() => toggleAudioPlayback(currentRoulette.previewUrl)}
@@ -376,6 +401,11 @@
                             >
                               {playingUrl === currentRoulette.previewUrl && isPlaying ? '⏸ Pause' : '▶ Play'}
                             </button>
+                          )}
+                          {formattedRouletteDate && (
+                            <span className="px-2.5 py-1 rounded-full bg-slate-900/80 border border-slate-700/80 text-slate-300 text-xs">
+                              {formattedRouletteDate}
+                            </span>
                           )}
                           <span className="px-2.5 py-1 rounded-full bg-sky-500/10 border border-sky-500/30 text-sky-300 text-xs">
                             Sent by {currentRoulette.sender}
@@ -433,10 +463,15 @@
                         <div className="mt-4 space-y-1 w-full">
                           <h4 className="text-lg font-bold text-teal-300 leading-tight break-words">{selectedPOV.title}</h4>
                           <p className="text-sm text-slate-400 break-words">{selectedPOV.artist}</p>
-                          <div className="pt-2">
+                          <div className="pt-2 flex flex-col items-center gap-1.5">
                             <span className="inline-block px-2.5 py-1 rounded bg-slate-900/60 text-slate-400 text-[10px] border border-slate-800 tracking-wide">
                               Vault Tracker: {selectedPOV.sender}
                             </span>
+                            {formattedPOVDate && (
+                              <span className="inline-block px-2.5 py-0.5 rounded bg-slate-900/40 text-teal-200/70 text-[10px] border border-teal-500/15 tracking-wide">
+                                {formattedPOVDate}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
