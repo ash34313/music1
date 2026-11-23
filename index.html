@@ -178,17 +178,27 @@
       }, [showFullLyrics]);
 
       const selectRouletteSong = (songList) => {
-        if (songList.length === 0) return;
-        const randomIndex = Math.floor(Math.random() * songList.length);
-        const chosen = songList[randomIndex];
+        const songsWithLyrics = songList.filter((song) => {
+          if (!song.lyrics) return false;
+          const validLines = song.lyrics
+            .split('\n')
+            .map((l) => l.trim())
+            .filter((l) => l.length > 0 && !l.startsWith('['));
+          return validLines.length > 0;
+        });
+
+        if (songsWithLyrics.length === 0) return;
+
+        const randomIndex = Math.floor(Math.random() * songsWithLyrics.length);
+        const chosen = songsWithLyrics[randomIndex];
         setCurrentRoulette(chosen);
 
-        const lines = chosen.lyrics.split('\n').map(l => l.trim()).filter(l => l.length > 0 && !l.startsWith('['));
-        if (lines.length > 0) {
-          setRouletteLine(lines[Math.floor(Math.random() * lines.length)]);
-        } else {
-          setRouletteLine("Looking at the stars together...");
-        }
+        const lines = chosen.lyrics
+          .split('\n')
+          .map((l) => l.trim())
+          .filter((l) => l.length > 0 && !l.startsWith('['));
+
+        setRouletteLine(lines[Math.floor(Math.random() * lines.length)]);
         setShowFullLyrics(false);
         setSelectedGuess(null);
         setIsGuessCorrect(null);
