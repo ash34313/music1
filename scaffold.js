@@ -1,36 +1,30 @@
-const fs = require('fs');
-const path = require('path');
+/* COPY FOR SONGS (STANDARD)
 
-const initialSongs = [
   {
-    "id": 1,
-    "title": "Chasing Cars",
-    "artist": "Snow Patrol",
-    "sender": "🦦",
-    "dateSent": "2025-10-14",
-    "note": "",
-    "lyrics": "We'll do it all, everything, on our own...\nIf I lay here, if I just lay here\nWould you lie with me and just forget the world?",
-    "albumArt": ""
-  }
-];
-
-const outputPath = path.join(__dirname, 'songs.json');
-fs.writeFileSync(outputPath, JSON.stringify(initialSongs, null, 2), 'utf-8');
-console.log('Successfully updated songs.json structure.');
-
-/* COPY FOR SONGS 
-
-{
-    "id": 17,
+    "id": 15,
     "title": "",
     "artist": "",
-    "sender": "🧩",
+    "sender": "🦦",
+    "dateSent": "2026-08-14",
+    "note": "",
     "lyrics": "",
-    "albumArt": "img/",
-    "honorableMention": true,
-    "dateSent": "2025-10-14",
-    "note": ""
+    "albumArt": "img/"
   }
-    
+
 */
 
+/* COPY FOR SONGS (HONORABLE MENTION)
+
+  {
+    "id": 15,
+    "title": "",
+    "artist": "",
+    "sender": "🦦",
+    "honorableMention": true,
+    "dateSent": "2026-08",
+    "note": "",
+    "lyrics": "",
+    "albumArt": "img/"
+  }
+
+*/
